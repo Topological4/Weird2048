@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2048 Game</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #faf8ef;
+        }
+        .game-container {
+            background: #bbada0;
+            border-radius: 6px;
+            width: 500px;
+            height: 500px;
+            position: relative;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 15px;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+        .tile {
+            background: #eee4da;
+            border-radius: 3px;
+            width: 100px;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+            transition: transform 0.1s, background-color 0.1s;
+        }
+        .tile[data-value="4"] { background-color: #ede0c8; }
+        .tile[data-value="8"] { background-color: #f2b179; }
+        .tile[data-value="16"] { background-color: #f59563; }
+        .tile[data-value="32"] { background-color: #f67c5f; }
+        .tile[data-value="64"] { background-color: #f65e3b; }
+        .tile[data-value="128"] { background-color: #edcf72; }
+        .tile[data-value="256"] { background-color: #edcc61; }
+        .tile[data-value="512"] { background-color: #edc850; }
+        .tile[data-value="1024"] { background-color: #edc53f; }
+        .tile[data-value="2048"] { background-color: #edc22e; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="grid-container" id="grid-container">
+            <!-- Tiles will be added here dynamically -->
+        </div>
+    </div>
+    <script>
+        const gridContainer = document.getElementById('grid-container');
+        const gridSize = 4;
+        const tiles = [];
+
+        function createGrid() {
+            for (let row = 0; row < gridSize; row++) {
+                tiles[row] = [];
+                for (let col = 0; col < gridSize; col++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    tile.dataset.row = row;
+                    tile.dataset.col = col;
+                    gridContainer.appendChild(tile);
+                    tiles[row][col] = null;
+                }
+            }
+        }
+
+        function getRandomEmptyTile() {
+            const emptyTiles = [];
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    if (!tiles[row][col]) {
+                        emptyTiles.push({ row, col });
+                    }
+                }
+            }
+            if (emptyTiles.length > 0) {
+                return emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
+            }
+            return null;
+        }
+
+        function spawnTile() {
+            const emptyTile = getRandomEmptyTile();
+            if (emptyTile) {
+                const newTile = document.createElement('div');
+                newTile.className = 'tile';
+                newTile.innerText = '2';
+                newTile.dataset.value = 2;
+                gridContainer.children[emptyTile.row * gridSize + emptyTile.col].appendChild(newTile);
+                tiles[emptyTile.row][emptyTile.col] = newTile;
+            }
+        }
+
+        function moveTiles(direction) {
+            const traversals = {
+                x: [0, 1, 2, 3],
+                y: [0, 1, 2, 3]
+            };
+
+            if (direction === 'right' || direction === 'down') {
+                traversals.x.reverse();
+                traversals.y.reverse();
+            }
+
+            let moved = false;
+
+            traversals.y.forEach(row => {
+                traversals.x.forEach(col => {
+                    const tile = tiles[row][col];
+                    if (tile) {
+                        let targetRow = row;
+                        let targetCol = col;
+
+                        if (direction === 'left') {
+                            while (targetCol > 0 && !tiles[targetRow][targetCol - 1]) {
+                                targetCol--;
+                            }
+                        } else if (direction === 'right') {
+                            while (targetCol < gridSize - 1 && !tiles[targetRow][targetCol + 1]) {
+                                targetCol++;
+                            }
+                        } else if (direction === 'up') {
+                            while (targetRow > 0 && !tiles[targetRow - 1][targetCol]) {
+                                targetRow--;
+                            }
+                        } else if (direction === 'down') {
+                            while (targetRow < gridSize - 1 && !tiles[targetRow + 1][targetCol]) {
+                                targetRow++;
+                            }
+                        }
+
+                        if (targetRow !== row || targetCol !== col) {
+                            gridContainer.children[targetRow * gridSize + targetCol].appendChild(tile);
+                            tiles[targetRow][targetCol] = tile;
+                            tiles[row][col] = null;
+                            moved = true;
+                        }
+                    }
+                });
+            });
+
+            traversals.y.forEach(row => {
+                traversals.x.forEach(col => {
+                    const tile = tiles[row][col];
+                    if (tile) {
+                        const nextTileRow = row + (direction === 'down' ? 1 : direction === 'up' ? -1 : 0);
+                        const nextTileCol = col + (direction === 'right' ? 1 : direction === 'left' ? -1 : 0);
+                        const nextTile = tiles[nextTileRow] ? tiles[nextTileRow][nextTileCol] : null;
+
+                        if (nextTile && nextTile.dataset.value === tile.dataset.value) {
+                            const newValue = parseInt(tile.dataset.value) * 2;
+                            nextTile.dataset.value = newValue;
+                            nextTile.innerText = newValue;
+                            nextTile.style.backgroundColor = getTileColor(newValue);
+                            gridContainer.removeChild(tile);
+                            tiles[row][col] = null;
+                            moved = true;
+                        }
+                    }
+                });
+            });
+
+            return moved;
+        }
+
+        function getTileColor(value) {
+            switch (value) {
+                case 4: return '#ede0c8';
+                case 8: return '#f2b179';
+                case 16: return '#f59563';
+                case 32: return '#f67c5f';
+                case 64: return '#f65e3b';
+                case 128: return '#edcf72';
+                case 256: return '#edcc61';
+                case 512: return '#edc850';
+                case 1024: return '#edc53f';
+                case 2048: return '#edc22e';
+                default: return '#eee4da';
+            }
+        }
+
+        window.addEventListener('keydown', event => {
+            let moved = false;
+            switch (event.key) {
+                case 'ArrowUp':
+                    moved = moveTiles('up');
+                    break;
+                case 'ArrowDown':
+                    moved = moveTiles('down');
+                    break;
+                case 'ArrowLeft':
+                    moved = moveTiles('left');
+                    break;
+                case 'ArrowRight':
+                    moved = moveTiles('right');
+                    break;
+            }
+            if (moved) {
+                spawnTile();
+            }
+        });
+
+        createGrid();
+        spawnTile();
+        spawnTile();
+    </script>
+</body>
+</html>
